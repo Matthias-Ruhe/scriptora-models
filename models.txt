@@ -1,0 +1,9 @@
+# Vosk-Modelle für Scriptora (Windows und Android).
+# Neue oder geänderte Modelle: Tag erhöhen (models-v2 …) und in der App-Download-Adresse nachziehen.
+tag=models-v1
+vosk-model-small-de-0.15
+vosk-model-small-en-us-0.15
+vosk-model-small-fr-0.22
+vosk-model-small-es-0.42
+vosk-model-small-it-0.22
+vosk-model-small-nl-0.22

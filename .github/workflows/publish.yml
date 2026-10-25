@@ -1,0 +1,53 @@
+name: Modelle veröffentlichen
+
+# Holt die Vosk-Modelle einmalig von alphacephei.com und legt sie als Release ab.
+# Ein bestehendes Release wird nie überschrieben – neue Modelle bekommen ein neues Tag (models-v2 …).
+
+on:
+  push:
+    branches: [main]
+    paths: [models.txt, .github/workflows/publish.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release schon vorhanden?
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(grep -E '^tag=' models.txt | cut -d= -f2)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag existiert bereits – nichts zu tun."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Modelle laden und prüfen
+        if: steps.check.outputs.exists != 'true'
+        run: |
+          mkdir dist
+          grep -vE '^(#|tag=|$)' models.txt | while read -r name; do
+            echo "Lade $name"
+            curl -fsSL --retry 3 -o "dist/$name.zip" "https://alphacephei.com/vosk/models/$name.zip"
+            unzip -tq "dist/$name.zip"
+          done
+          (cd dist && sha256sum *.zip > SHA256SUMS.txt)
+          cat dist/SHA256SUMS.txt
+          ls -lh dist
+
+      - name: Release anlegen
+        if: steps.check.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.check.outputs.tag }}" dist/* LICENSE \
+            --title "Sprachmodelle ${{ steps.check.outputs.tag }}" \
+            --notes "Vosk-Sprachmodelle für Scriptora – Teleprompter. Unverändert übernommen von https://alphacephei.com/vosk/models, Lizenz Apache 2.0 (siehe LICENSE)."
